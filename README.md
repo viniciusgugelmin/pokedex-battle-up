@@ -31,7 +31,7 @@
 ## 📋 Sobre o projeto
 
 ![Git](https://img.shields.io/badge/git-%23F05033.svg?style=for-the-badge&logo=git&logoColor=white)
-![Python](https://img.shields.io/badge/python-%23323330.svg?style=for-the-badge&logo=javascript&logoColor=%23F7DF1E)
+![Python](https://img.shields.io/badge/python-%23323330.svg?style=for-the-badge&logo=python&logoColor=%23F7DF1E)
 ![Flask](https://img.shields.io/badge/flask-%23323330.svg?style=for-the-badge&logo=flask&logoColor=%23F7DF1E)
 <a name="usando"></a>
 
