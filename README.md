@@ -66,8 +66,7 @@ Note que após a execução do comando acima, será criado os arquivos `.env`
 E por fim, rode o comando para iniciar a aplicação
 
 ```bash
-$ cd ambiente
-$ Py pokedex.py
+$ Py ambiente/pokedex.py
 ```
 
 <a name="contribuindo"></a>
