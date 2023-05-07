@@ -7,11 +7,13 @@ import random
 
 app = Flask(__name__)
 
+
 @app.route('/')
 def index():
     return render_template("index.html")
 
-@app.route("/buscar", methods = ["GET", "POST"])
+
+@app.route("/buscar", methods=["GET", "POST"])
 def buscar():
     pokemon = Pokemon(request.form["nome"].lower(), "")
     try:
@@ -20,26 +22,62 @@ def buscar():
         result = result['front_default']
         pokemon.foto = result
     except:
-        return "Pokemon não encontrando"         
+        return "Pokemon não encontrando"
     return render_template("index.html",
-    nome = pokemon.nome,
-    foto = pokemon.foto,   
-    
-    )
+                           nome=pokemon.nome,
+                           foto=pokemon.foto,
 
-@app.route("/battle", methods = ["POST"])
+                           )
+
+
+@app.route("/battle", methods=["POST"])
 def battle():
-    data =  request.get_json()
+    data = request.get_json()
+    if not data:
+        return make_response(
+            jsonify({"message": "No data found", "status": "BAD_REQUEST", "status_code": 400, "data": None}), 400)
+
+    if not data.get("pokemonId1") or not data.get("pokemonId2") or not data.get("token1") or not data.get("token2"):
+        return make_response(
+            jsonify({"message": "Missing data", "status": "BAD_REQUEST", "status_code": 400, "data": None}), 400)
+
     pokemonId1 = data['pokemonId1']
     pokemonId2 = data['pokemonId2']
     token1 = data['token1']
     token2 = data['token2']
 
-    res = requests.get(f"http://localhost:5000/users/pokemons/{pokemonId1}", headers = {"Authorization": token1}).text
+    res = requests.get(f"http://localhost:5000/users/pokemons/{pokemonId1}", headers={"Authorization": token1}).text
     pokemon1 = json.loads(res)["data"]
 
-    res2 = requests.get(f"http://localhost:5000/users/pokemons/{pokemonId2}", headers = {"Authorization": token2}).text
+    if not pokemon1:
+        return make_response(
+            jsonify({"message": "Pokemon not found", "status": "BAD_REQUEST", "status_code": 400, "data": None}), 400)
+
+    if pokemon1 is None:
+        return make_response(
+            jsonify({"message": "Pokemon not found", "status": "NOT_FOUND", "status_code": 404, "data": None}), 404)
+
+    res2 = requests.get(f"http://localhost:5000/users/pokemons/{pokemonId2}", headers={"Authorization": token2}).text
     pokemon2 = json.loads(res2)["data"]
+
+    if not pokemon2:
+        return make_response(
+            jsonify({"message": "Pokemon not found", "status": "BAD_REQUEST", "status_code": 400, "data": None}), 400)
+
+    if pokemon2 is None:
+        return make_response(
+            jsonify({"message": "Pokemon not found", "status": "NOT_FOUND", "status_code": 404, "data": None}), 404)
+
+    if pokemon1['hp'] == 0 or pokemon2['hp'] == 0:
+        return make_response(
+            jsonify({
+                "message": "One of the pokemons is dead",
+                "status": "BAD_REQUEST",
+                "status_code": 400,
+                "data": None
+            }),
+            400
+        )
 
     pokemon1Atk = random.randint(0, pokemon1['attack'])
     pokemon1Def = random.randint(0, pokemon1['defense'])
@@ -48,35 +86,50 @@ def battle():
     pokemon2Def = random.randint(0, pokemon2['defense'])
 
     if pokemon1Atk > pokemon2Def:
-        pokemon2['life'] -= pokemon1Atk - pokemon2Def
+        damage = pokemon1Atk - pokemon2Def
+        if damage > pokemon2['life']:
+            pokemon2['life'] = 0
+        else:
+            pokemon2['life'] -= damage
 
     if pokemon2Atk > pokemon1Def:
-        pokemon1['life'] -= pokemon2Atk - pokemon1Def
+        damage = pokemon2Atk - pokemon1Def
+        if damage > pokemon1['life']:
+            pokemon1['life'] = 0
+        else:
+            pokemon1['life'] -= damage
 
-    battle1Res = requests.patch(f"http://localhost:5000/users/pokemons/{pokemonId1}/battle", headers={"Authorization": token1}).text
-    battle2Res = requests.patch(f"http://localhost:5000/users/pokemons/{pokemonId2}/battle", headers={"Authorization": token2}).text
+    battle1Res = requests.patch(f"http://localhost:5000/users/pokemons/{pokemonId1}/battle/{pokemon1['life']}",
+                                headers={"Authorization": token1}).text
+    battle2Res = requests.patch(f"http://localhost:5000/users/pokemons/{pokemonId2}/battle/{pokemon2['life']}",
+                                headers={"Authorization": token2}).text
 
     pokemon1 = json.loads(battle1Res)["data"]
     pokemon2 = json.loads(battle2Res)["data"]
 
     return make_response(
         jsonify({
-            "pokemon1": {
-                "data": pokemon1,
-                "atk": pokemon1Atk,
-                "def": pokemon1Def
-            },
-            "pokemon2": {
-                "data": pokemon2,
-                "atk": pokemon2Atk,
-                "def": pokemon2Def
+            "message": "Battle result",
+            "status": "SUCCESS",
+            "status_code": 200,
+            "data": {
+                "pokemon1": {
+                    "data": pokemon1,
+                    "atk": pokemon1Atk,
+                    "def": pokemon1Def
+                },
+                "pokemon2": {
+                    "data": pokemon2,
+                    "atk": pokemon2Atk,
+                    "def": pokemon2Def
+                }
             }
         }),
         200
     )
 
-    
-if __name__=="__main__":
-    app.run(debug=True)
 
+## change port to 5001
 
+if __name__ == '__main__':
+    app.run(debug=True, port=5001)
