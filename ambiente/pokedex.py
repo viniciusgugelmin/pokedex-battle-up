@@ -68,7 +68,7 @@ def battle():
         return make_response(
             jsonify({"message": "Pokemon not found", "status": "NOT_FOUND", "status_code": 404, "data": None}), 404)
 
-    if pokemon1['hp'] == 0 or pokemon2['hp'] == 0:
+    if pokemon1['life'] == 0 or pokemon2['life'] == 0:
         return make_response(
             jsonify({
                 "message": "One of the pokemons is dead",
@@ -103,9 +103,6 @@ def battle():
                                 headers={"Authorization": token1}).text
     battle2Res = requests.patch(f"http://localhost:5000/users/pokemons/{pokemonId2}/battle/{pokemon2['life']}",
                                 headers={"Authorization": token2}).text
-
-    pokemon1 = json.loads(battle1Res)["data"]
-    pokemon2 = json.loads(battle2Res)["data"]
 
     return make_response(
         jsonify({
