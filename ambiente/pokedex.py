@@ -4,8 +4,13 @@ from models.pokemon import Pokemon
 import json
 import requests
 import random
+import pika
 
 app = Flask(__name__)
+credentials = pika.PlainCredentials('admin', 'admin')
+connection = pika.BlockingConnection(pika.ConnectionParameters('localhost', credentials=credentials))
+channel = connection.channel()
+exchange_name = 'default'
 
 
 @app.route('/')
@@ -16,13 +21,16 @@ def index():
 @app.route("/buscar", methods=["GET", "POST"])
 def buscar():
     pokemon = Pokemon(request.form["nome"].lower(), "")
+    routing_key = 'hello'
     try:
         res = json.loads(requests.get(f"https://pokeapi.co/api/v2/pokemon/{pokemon.nome}").text)
         result = res['sprites']
         result = result['front_default']
         pokemon.foto = result
+        channel.basic_publish(exchange=exchange_name, routing_key=routing_key,
+                              body=bytes(json.dumps(pokemon.__dict__), 'utf-8'))
     except:
-        return "Pokemon não encontrando"
+        return "Pokemon não encontrado"
     return render_template("index.html",
                            nome=pokemon.nome,
                            foto=pokemon.foto,
@@ -33,6 +41,7 @@ def buscar():
 @app.route("/battle", methods=["POST"])
 def battle():
     data = request.get_json()
+    routing_key = 'battle'
     if not data:
         return make_response(
             jsonify({"message": "No data found", "status": "BAD_REQUEST", "status_code": 400, "data": None}), 400)
@@ -99,10 +108,11 @@ def battle():
         else:
             pokemon1['life'] -= damage
 
-    battle1Res = requests.patch(f"http://localhost:5000/users/pokemons/{pokemonId1}/battle/{pokemon1['life']}",
-                                headers={"Authorization": token1}).text
-    battle2Res = requests.patch(f"http://localhost:5000/users/pokemons/{pokemonId2}/battle/{pokemon2['life']}",
-                                headers={"Authorization": token2}).text
+    channel.basic_publish(exchange=exchange_name, routing_key=routing_key,
+                          body=bytes(json.dumps({
+                              "pokemon1": pokemon1,
+                              "pokemon2": pokemon2,
+                          }), 'utf-8'))
 
     return make_response(
         jsonify({
@@ -125,8 +135,6 @@ def battle():
         200
     )
 
-
-## change port to 5001
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)
